@@ -1,33 +1,36 @@
-const http = require('http');
+const express = require('express');
 const fs = require('fs');
-const url = require('url');
 const cors = require('cors');
+const request = require('request');
 
 const allowedDomains = JSON.parse(fs.readFileSync('allowed-domains.json'));
 
-http.createServer((request, response) => {
-  // Get the Referer header of the request
-  const referer = request.headers.referer;
+const app = express();
 
-  if (referer) {
-    // Check if the domain of the Referer header is in the allowed list
-    const refererDomain = new URL(referer).hostname;
-    if (allowedDomains.includes(refererDomain)) {
-      // Enable CORS for the referer domain
-      cors({ origin: refererDomain })(request, response, () => {});
+app.use(cors());
 
-      // Parse the URL of the request and get the image URL from the query parameters
-      const imageUrl = url.parse(request.url, true).query.url;
+app.get('/', (req, res) => {
+    const imageUrl = req.query.url;
 
-      // Read the image file from the URL using a Readable stream
-      const imageStream = fs.createReadStream(imageUrl);
-
-      // Pipe the image data from the stream to the response
-      imageStream.pipe(response);
-    } else {
-      // Send an error message if the domain is not allowed
-      response.statusCode = 403;
-      response.end('Error: The domain is not in the allowed list');
+    if (!imageUrl) {
+        res.status(400).send('No image URL provided');
+        return;
     }
-  }
-}).listen(3000);
+
+    // if allowed domain referer set cors header
+    if (allowedDomains.includes(req.headers.referer)) {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.referer);
+        res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    }
+
+    const imageStream = request(imageUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36',
+        },
+    });
+
+    // Pipe the image data from the stream to the response
+    imageStream.pipe(res);
+});
+
+app.listen(3000, () => console.log('Image proxy server listening on port 3000'));
