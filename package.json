@@ -1,0 +1,10 @@
+{
+  "name": "image-proxy",
+  "version": "1.0.0",
+  "dependencies": {
+    "cors": "^2.8.5",
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
